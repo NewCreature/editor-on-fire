@@ -28,6 +28,9 @@
 #include "menu/track.h"
 #include "menu/help.h"
 #include "menu/note.h"	//For pitch macros
+#ifdef ALLEGRO_LEGACY
+	#include "menu/native.h"
+#endif
 #include "main.h"
 #include "utility.h"
 #include "player.h"
@@ -4965,6 +4968,9 @@ int eof_initialize(int argc, char * argv[])
 		eof_enable_notes_panel = 0;	//Toggle this because the function call below will toggle it back to on
 		(void) eof_display_notes_panel();
 	}
+	#ifdef ALLEGRO_LEGACY
+		eof_set_up_native_menus(eof_main_menu);
+	#endif
 
 	return 1;
 }
