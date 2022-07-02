@@ -9,6 +9,9 @@ Unversioned To-Do List
 [X]Change 'l' character glyph as it is identical to the '1' glyph.
 [ ]Lyric edit dialog should have a place to put note and octave.
 [ ]Add extra vocal tracks that can be used as scratch space for vocal editing.
+[ ]Finish Allegro Legacy port.
+   [ ]Finish native menu implementation.
+      [ ]Update native menus if flags or captions changed.
 
 
 EOF 1.8 To-Do List
