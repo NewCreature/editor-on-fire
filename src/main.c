@@ -2770,6 +2770,11 @@ void eof_logic(void)
 		eof_find_lyric_preview_lines();
 	}
 	eof_frame++;
+
+	#ifdef ALLEGRO_LEGACY
+		eof_update_native_menus();
+		eof_handle_native_menu_clicks();
+	#endif
 }
 
 static char eof_tone_name_buffer[16] = {0};
