@@ -8,6 +8,8 @@ static ALLEGRO_MENU * native_menu[EOF_MAX_NATIVE_MENUS] = {NULL};
 static int native_menu_items[EOF_MAX_NATIVE_MENUS] = {0};
 static MENU * a4_menu[EOF_MAX_NATIVE_MENUS] = {NULL};
 static MENU * a4_menu_item[EOF_MAX_MENU_ITEMS] = {NULL};
+static char * a4_menu_item_name[EOF_MAX_MENU_ITEMS] = {NULL};
+static int a4_menu_item_flags[EOF_MAX_MENU_ITEMS] = {0};
 static bool native_menu_blank[EOF_MAX_MENU_ITEMS] = {false};
 static int current_menu = 0;
 static int current_id = 0;
@@ -36,6 +38,33 @@ static const char * get_menu_text(const char * in, char * out)
 		}
 	}
 	return out;
+}
+
+static bool index_a4_menu_item(int id, MENU * mp)
+{
+	a4_menu_item[id] = mp;
+	a4_menu_item_name[id] = mp->text ? malloc(strlen(mp->text) + 1) : NULL;
+	if(a4_menu_item_name[id])
+	{
+		strcpy(a4_menu_item_name[id], mp->text);
+	}
+	a4_menu_item_flags[id] = mp->flags;
+	return true;
+}
+
+static bool update_a4_menu_item(int id, const char * caption, int flags)
+{
+	if(a4_menu_item_name[id])
+	{
+		free(a4_menu_item_name[id]);
+	}
+	a4_menu_item_name[id] = caption ? malloc(strlen(caption) + 1) : NULL;
+	if(a4_menu_item_name[id])
+	{
+		strcpy(a4_menu_item_name[id], caption);
+	}
+	a4_menu_item_flags[id] = flags;
+	return true;
 }
 
 static bool add_menu(MENU * mp, MENU * parent, ALLEGRO_MENU * native_parent)
@@ -85,7 +114,7 @@ static bool add_menu(MENU * mp, MENU * parent, ALLEGRO_MENU * native_parent)
 			{
 				al_append_menu_item(native_menu[this_menu], get_menu_text(mp->text, buf), current_id, flags, NULL, NULL);
 				native_menu_items[this_menu]++;
-				a4_menu_item[current_id] = mp;
+				index_a4_menu_item(current_id, mp);
 				current_id++;
 			}
 		}
@@ -108,10 +137,11 @@ static bool add_menu(MENU * mp, MENU * parent, ALLEGRO_MENU * native_parent)
 		{
 			printf("%s\n", mp->text);
 			al_append_menu_item(native_parent, get_menu_text(parent->text, buf), current_id, flags, NULL, native_menu[this_menu]);
-			a4_menu_item[current_id] = mp;
+			index_a4_menu_item(current_id, mp);
 			current_id++;
 		}
 	}
+	printf("done\n");
 	return true;
 }
 
@@ -196,57 +226,82 @@ static bool flags_changed(int mflags, int nmflags)
 	return false;
 }
 
-static void update_native_menu_flags(int m)
+static bool caption_changed(const char * mcap, const char * nmcap)
 {
-	int i;
-	int flags = 0;
-	int new_flags = 0;
-	const char * caption;
-
-	if(a4_menu[m] && native_menu[m])
+	if(mcap && !nmcap)
 	{
-		for(i = 0; i < native_menu_items[m]; i++)
+		return true;
+	}
+	else if(nmcap && !mcap)
+	{
+		return true;
+	}
+	else if(mcap && nmcap && strcmp(mcap, nmcap))
+	{
+		return true;
+	}
+	return false;
+}
+
+static bool update_native_menu(int m)
+{
+	ALLEGRO_MENU * mp = NULL;
+	int index = -1;
+	int i;
+	bool update = false;
+	int new_flags = 0;
+
+	for(i = 0; i < current_menu; i++)
+	{
+		if(al_find_menu_item(native_menu[i], m, &mp, &index))
 		{
-			caption = al_get_menu_item_caption(native_menu[m], i);
-			if(caption)
+			if(caption_changed(a4_menu_item_name[m], a4_menu_item[m]->text))
 			{
-				new_flags = 0;
-				flags = al_get_menu_item_flags(native_menu[m], i);
-				if(flags != -1)
-				{
-					if(flags_changed(a4_menu[m]->flags, flags))
-					{
-						if(a4_menu[m]->flags & D_DISABLED)
-						{
-							new_flags = ALLEGRO_MENU_ITEM_DISABLED;
-						}
-						if(a4_menu[m]->flags & D_SELECTED)
-						{
-							new_flags = ALLEGRO_MENU_ITEM_CHECKED;
-						}
-						set_menu_item_flags(native_menu[m], i, new_flags);
-					}
-				}
+				printf("update %s\n", a4_menu_item[m]->text);
+				al_set_menu_item_caption(mp, index, a4_menu_item[m]->text ? a4_menu_item[m]->text : "");
+				update = true;
+				printf("update done\n");
 			}
+			if(a4_menu_item_flags[m] != a4_menu_item[m]->flags)
+			{
+				if(a4_menu_item[m]->flags & D_DISABLED)
+				{
+					new_flags = ALLEGRO_MENU_ITEM_DISABLED;
+				}
+				if(a4_menu_item[m]->flags & D_SELECTED)
+				{
+					new_flags = ALLEGRO_MENU_ITEM_CHECKED;
+				}
+				set_menu_item_flags(mp, index, new_flags);
+			}
+			if(update)
+			{
+				update_a4_menu_item(m, a4_menu_item[i]->text, a4_menu_item[i]->flags);
+			}
+			return true;
 		}
 	}
+	return false;
 }
 
 void eof_update_native_menus(void)
 {
 	int i;
 
-	for(i = 0; i < current_menu; i++)
+	for(i = 0; i < current_id; i++)
 	{
-		update_native_menu_flags(i);
+		update_native_menu(i);
 	}
 }
 
 static void call_menu_proc(int id)
 {
+	printf("call 1\n");
 	if(a4_menu_item[id]->proc)
 	{
+	printf("call 2\n");
 		a4_menu_item[id]->proc();
+	printf("call 3\n");
 	}
 }
 
