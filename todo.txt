@@ -11,7 +11,17 @@ Unversioned To-Do List
 [ ]Add extra vocal tracks that can be used as scratch space for vocal editing.
 [ ]Finish Allegro Legacy port.
    [ ]Finish native menu implementation.
-      [ ]Update native menus if flags or captions changed.
+      [X]Update native menus if flags or captions changed.
+      [ ]Disable all child menu items on systems where submenu parents can't be
+         disabled. On MacOS, menu items can't be disabled if they are parents.
+         Some MacOS apps do disable parent menu items, so it might be something
+         we can fix in Allegro.
+      [ ]Figure out why some submenus won't open.
+      [ ]See if we can fix Allegro to disable clicking on parent menu items.
+   [ ]See if we can fix native dialogs on MacOS to only show files with our
+      desired extensions.
+   [ ]Remove the Allegro 4-style menu from the main dialog under Allegro Legacy.
+   [ ]Make window resizeable.
 
 
 EOF 1.8 To-Do List
