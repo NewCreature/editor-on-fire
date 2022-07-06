@@ -22,7 +22,7 @@ static const char * get_menu_text(const char * in, char * out)
 
 	if(!in || !strlen(in))
 	{
-		return NULL;
+		return empty_string;
 	}
 	for(i = 0; i < strlen(in); i++)
 	{
@@ -84,12 +84,10 @@ static bool add_menu(MENU * mp, MENU * parent, ALLEGRO_MENU * native_parent)
 	}
 	a4_menu[this_menu] = mp;
 	current_menu++;
-	printf("walk menu\n");
 	while(mp && mp->text)
 	{
 		/* Allegro 4 menu items are also menus if they have a child. Add new native
 	     menu if we have a child. */
-		printf("%s\n", mp->text);
 		if(mp->child)
 		{
 			if(!add_menu(mp->child, mp, native_menu[this_menu]))
@@ -121,27 +119,24 @@ static bool add_menu(MENU * mp, MENU * parent, ALLEGRO_MENU * native_parent)
 		mp++;
 	}
 
-	printf("whatever happens next\n");
 	if(parent && native_parent)
 	{
 		flags = 0;
-		if(mp->flags & D_SELECTED)
+		if(parent->flags & D_SELECTED)
 		{
 			flags = ALLEGRO_MENU_ITEM_CHECKED;
 		}
-		if(mp->flags & D_DISABLED)
+		if(parent->flags & D_DISABLED)
 		{
 			flags = ALLEGRO_MENU_ITEM_DISABLED;
 		}
-//		if(mp->text)
+		if(parent->text)
 		{
-			printf("%s\n", mp->text);
 			al_append_menu_item(native_parent, get_menu_text(parent->text, buf), current_id, flags, NULL, native_menu[this_menu]);
 			index_a4_menu_item(current_id, mp);
 			current_id++;
 		}
 	}
-	printf("done\n");
 	return true;
 }
 
@@ -257,10 +252,8 @@ static bool update_native_menu(int m)
 		{
 			if(caption_changed(a4_menu_item_name[m], a4_menu_item[m]->text))
 			{
-				printf("update %s\n", a4_menu_item[m]->text);
 				al_set_menu_item_caption(mp, index, a4_menu_item[m]->text ? a4_menu_item[m]->text : "");
 				update = true;
-				printf("update done\n");
 			}
 			if(a4_menu_item_flags[m] != a4_menu_item[m]->flags)
 			{
@@ -296,12 +289,9 @@ void eof_update_native_menus(void)
 
 static void call_menu_proc(int id)
 {
-	printf("call 1\n");
 	if(a4_menu_item[id]->proc)
 	{
-	printf("call 2\n");
 		a4_menu_item[id]->proc();
-	printf("call 3\n");
 	}
 }
 
