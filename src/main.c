@@ -2772,8 +2772,8 @@ void eof_logic(void)
 	eof_frame++;
 
 	#ifdef ALLEGRO_LEGACY
-		eof_update_native_menus();
 		eof_handle_native_menu_clicks();
+		eof_update_native_menus();
 	#endif
 }
 
