@@ -4,15 +4,29 @@
 #include <allegro5/allegro_native_dialog.h>
 #include "native.h"
 
+/* Each Allegro 5 menu ID is associated with all of this data. We use this data
+   to keep the Allegro 5 menu state synchronized with its Allegro 4 counterpart.
+	 */
+typedef struct
+{
+
+	/* Data we use to know which Allegro 5 menu and item each A4 item is
+	   associated with. */
+	MENU * menu_item;
+
+	/* Remember old values so we can compare to update values in user menus. */
+	char * name;
+	int flags;
+
+} A4_MENU_ITEM_DATA;
+
 static ALLEGRO_MENU * native_menu[EOF_MAX_NATIVE_MENUS] = {NULL};
 static int native_menu_items[EOF_MAX_NATIVE_MENUS] = {0};
-static MENU * a4_menu[EOF_MAX_NATIVE_MENUS] = {NULL};
-static MENU * a4_menu_item[EOF_MAX_MENU_ITEMS] = {NULL};
-static char * a4_menu_item_name[EOF_MAX_MENU_ITEMS] = {NULL};
-static int a4_menu_item_flags[EOF_MAX_MENU_ITEMS] = {0};
-static bool native_menu_blank[EOF_MAX_MENU_ITEMS] = {false};
+static A4_MENU_ITEM_DATA * a4_menu_item_data = NULL;
+
 static int current_menu = 0;
-static int current_id = 0;
+static int current_id = 1;
+
 static ALLEGRO_EVENT_QUEUE * event_queue = NULL;
 
 static const char * get_menu_text(const char * in, char * out)
@@ -22,7 +36,8 @@ static const char * get_menu_text(const char * in, char * out)
 
 	if(!in || !strlen(in))
 	{
-		return empty_string;
+		strcpy(out, "placeholder");
+		return out;
 	}
 	for(i = 0; i < strlen(in); i++)
 	{
@@ -42,55 +57,57 @@ static const char * get_menu_text(const char * in, char * out)
 
 static bool index_a4_menu_item(int id, MENU * mp)
 {
-	a4_menu_item[id] = mp;
-	a4_menu_item_name[id] = mp->text ? malloc(strlen(mp->text) + 1) : NULL;
-	if(a4_menu_item_name[id])
+	a4_menu_item_data[id].menu_item = mp;
+	a4_menu_item_data[id].name = mp->text ? malloc(strlen(mp->text) + 1) : NULL;
+	if(a4_menu_item_data[id].name)
 	{
-		strcpy(a4_menu_item_name[id], mp->text);
+		strcpy(a4_menu_item_data[id].name, mp->text);
 	}
-	a4_menu_item_flags[id] = mp->flags;
+	a4_menu_item_data[id].flags = mp->flags;
+
 	return true;
 }
 
 static bool update_a4_menu_item(int id, const char * caption, int flags)
 {
-	if(a4_menu_item_name[id])
+	if(a4_menu_item_data[id].name)
 	{
-		free(a4_menu_item_name[id]);
+		free(a4_menu_item_data[id].name);
 	}
-	a4_menu_item_name[id] = caption ? malloc(strlen(caption) + 1) : NULL;
-	if(a4_menu_item_name[id])
+	a4_menu_item_data[id].name = caption ? malloc(strlen(caption) + 1) : NULL;
+	if(a4_menu_item_data[id].name)
 	{
-		strcpy(a4_menu_item_name[id], caption);
+		strcpy(a4_menu_item_data[id].name, caption);
 	}
-	a4_menu_item_flags[id] = flags;
+	a4_menu_item_data[id].flags = flags;
 	return true;
 }
 
-static bool add_menu(MENU * mp, MENU * parent, ALLEGRO_MENU * native_parent)
+static bool add_menu(MENU * mp, MENU * parent, int parent_pos)
 {
-	int this_menu = current_menu;
 	char buf[256];
 	int flags;
+	int this_menu = current_menu;
 
-	if(this_menu >= EOF_MAX_NATIVE_MENUS)
+	if(current_menu >= EOF_MAX_NATIVE_MENUS)
 	{
 		return false;
 	}
-	native_menu[this_menu] = al_create_menu();
-	if(!native_menu[this_menu])
+
+	native_menu[current_menu] = al_create_menu();
+	if(!native_menu[current_menu])
 	{
 		return false;
 	}
-	a4_menu[this_menu] = mp;
 	current_menu++;
+
 	while(mp && mp->text)
 	{
 		/* Allegro 4 menu items are also menus if they have a child. Add new native
 	     menu if we have a child. */
 		if(mp->child)
 		{
-			if(!add_menu(mp->child, mp, native_menu[this_menu]))
+			if(!add_menu(mp->child, mp, this_menu))
 			{
 				return false;
 			}
@@ -108,18 +125,16 @@ static bool add_menu(MENU * mp, MENU * parent, ALLEGRO_MENU * native_parent)
 			{
 				flags = ALLEGRO_MENU_ITEM_DISABLED;
 			}
-			if(mp->text)
-			{
-				al_append_menu_item(native_menu[this_menu], get_menu_text(mp->text, buf), current_id, flags, NULL, NULL);
-				native_menu_items[this_menu]++;
-				index_a4_menu_item(current_id, mp);
-				current_id++;
-			}
+			al_append_menu_item(native_menu[this_menu], mp->proc ? get_menu_text(mp->text, buf) : "", current_id, flags, NULL, NULL);
+			index_a4_menu_item(current_id, mp);
+			native_menu_items[this_menu]++;
+			current_id++;
 		}
 		mp++;
 	}
 
-	if(parent && native_parent)
+	/* Add menu item for submenu. */
+	if(parent && parent_pos >= 0)
 	{
 		flags = 0;
 		if(parent->flags & D_SELECTED)
@@ -132,8 +147,9 @@ static bool add_menu(MENU * mp, MENU * parent, ALLEGRO_MENU * native_parent)
 		}
 		if(parent->text)
 		{
-			al_append_menu_item(native_parent, get_menu_text(parent->text, buf), current_id, flags, NULL, native_menu[this_menu]);
+			al_append_menu_item(native_menu[parent_pos], get_menu_text(parent->text, buf), current_id, flags, NULL, native_menu[this_menu]);
 			index_a4_menu_item(current_id, mp);
+			native_menu_items[parent_pos]++;
 			current_id++;
 		}
 	}
@@ -148,7 +164,6 @@ static void destroy_native_menus(void)
 	{
 		al_destroy_menu(native_menu[i]);
 	}
-	current_menu = 0;
 }
 
 bool eof_set_up_native_menus(MENU * mp)
@@ -161,7 +176,12 @@ bool eof_set_up_native_menus(MENU * mp)
 	{
 		return false;
 	}
-	if(!add_menu(mp, NULL, NULL))
+	a4_menu_item_data = malloc(sizeof(A4_MENU_ITEM_DATA) * EOF_MAX_MENU_ITEMS);
+	if(!a4_menu_item_data)
+	{
+		return false;
+	}
+	if(!add_menu(mp, NULL, -1))
 	{
 		destroy_native_menus();
 		return false;
@@ -246,42 +266,37 @@ static bool update_native_menu(int m)
 	bool update = false;
 	int new_flags = 0;
 
-	for(i = 0; i < current_menu; i++)
+	if(caption_changed(a4_menu_item_data[m].name, a4_menu_item_data[m].menu_item->text))
 	{
-		if(al_find_menu_item(native_menu[i], m, &mp, &index))
-		{
-			if(caption_changed(a4_menu_item_name[m], a4_menu_item[m]->text))
-			{
-				al_set_menu_item_caption(mp, index, a4_menu_item[m]->text ? a4_menu_item[m]->text : "");
-				update = true;
-			}
-			if(a4_menu_item_flags[m] != a4_menu_item[m]->flags)
-			{
-				if(a4_menu_item[m]->flags & D_DISABLED)
-				{
-					new_flags = ALLEGRO_MENU_ITEM_DISABLED;
-				}
-				if(a4_menu_item[m]->flags & D_SELECTED)
-				{
-					new_flags = ALLEGRO_MENU_ITEM_CHECKED;
-				}
-				set_menu_item_flags(mp, index, new_flags);
-			}
-			if(update)
-			{
-				update_a4_menu_item(m, a4_menu_item[i]->text, a4_menu_item[i]->flags);
-			}
-			return true;
-		}
+		al_set_menu_item_caption(native_menu[0], m, a4_menu_item_data[m].menu_item->text ? a4_menu_item_data[m].menu_item->text : "blank");
+		update = true;
 	}
-	return false;
+	if(a4_menu_item_data[m].flags != a4_menu_item_data[m].menu_item->flags)
+	{
+		if(a4_menu_item_data[m].flags & D_DISABLED)
+		{
+			new_flags = ALLEGRO_MENU_ITEM_DISABLED;
+		}
+		if(a4_menu_item_data[m].flags & D_SELECTED)
+		{
+			new_flags = ALLEGRO_MENU_ITEM_CHECKED;
+		}
+		set_menu_item_flags(native_menu[0], m, new_flags);
+		update = true;
+	}
+	if(update)
+	{
+		update_a4_menu_item(m, a4_menu_item_data[m].menu_item->text, a4_menu_item_data[m].menu_item->flags);
+	}
+	return true;
 }
 
 void eof_update_native_menus(void)
 {
-	int i;
+	int i, j;
+	const char * caption;
 
-	for(i = 0; i < current_id; i++)
+	for(i = 1; i < current_id; i++)
 	{
 		update_native_menu(i);
 	}
@@ -289,9 +304,9 @@ void eof_update_native_menus(void)
 
 static void call_menu_proc(int id)
 {
-	if(a4_menu_item[id]->proc)
+	if(a4_menu_item_data[id].menu_item->proc)
 	{
-		a4_menu_item[id]->proc();
+		a4_menu_item_data[id].menu_item->proc();
 	}
 }
 
