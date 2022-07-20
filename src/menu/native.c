@@ -3,6 +3,7 @@
 #include <allegro5/allegro5.h>
 #include <allegro5/allegro_native_dialog.h>
 #include "native.h"
+#include "../dialog.h"
 
 /* Each Allegro 5 menu ID is associated with all of this data. We use this data
    to keep the Allegro 5 menu state synchronized with its Allegro 4 counterpart.
@@ -123,7 +124,11 @@ static bool add_menu(MENU * mp, MENU * parent, int parent_pos)
 			}
 			if(mp->flags & D_DISABLED)
 			{
-				flags = ALLEGRO_MENU_ITEM_DISABLED;
+				flags |= ALLEGRO_MENU_ITEM_DISABLED;
+			}
+			if(mp->flags & D_USER)
+			{
+				flags |= ALLEGRO_MENU_ITEM_CHECKBOX;
 			}
 			al_append_menu_item(native_menu[this_menu], mp->proc ? get_menu_text(mp->text, buf) : "", current_id, flags, NULL, NULL);
 			index_a4_menu_item(current_id, mp);
@@ -191,56 +196,6 @@ bool eof_set_up_native_menus(MENU * mp)
 	return true;
 }
 
-static bool set_menu_item_flags(ALLEGRO_MENU * mp, int item, int flags)
-{
-  int old_flags = al_get_menu_item_flags(mp, item) & ~ALLEGRO_MENU_ITEM_CHECKBOX;
-
-	if(old_flags == -1)
-	{
-		return false;
-	}
-  if(flags != old_flags)
-  {
-    al_set_menu_item_flags(mp, item, flags);
-  }
-	return true;
-}
-
-static bool flags_changed(int mflags, int nmflags)
-{
-	int cflags = 0;
-
-	if(nmflags & ALLEGRO_MENU_ITEM_DISABLED)
-	{
-		if(!(mflags & D_DISABLED))
-		{
-			return true;
-		}
-	}
-	if(!(nmflags & ALLEGRO_MENU_ITEM_DISABLED))
-	{
-		if(mflags & D_DISABLED)
-		{
-			return true;
-		}
-	}
-	if(nmflags & ALLEGRO_MENU_ITEM_CHECKED)
-	{
-		if(!(mflags & D_SELECTED))
-		{
-			return true;
-		}
-	}
-	if(!(nmflags & ALLEGRO_MENU_ITEM_CHECKED))
-	{
-		if(mflags & D_SELECTED)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
 static bool caption_changed(const char * mcap, const char * nmcap)
 {
 	if(mcap && !nmcap)
@@ -271,17 +226,17 @@ static bool update_native_menu(int m)
 		al_set_menu_item_caption(native_menu[0], m, a4_menu_item_data[m].menu_item->text ? a4_menu_item_data[m].menu_item->text : "blank");
 		update = true;
 	}
-	if(a4_menu_item_data[m].flags != a4_menu_item_data[m].menu_item->flags)
+	if((a4_menu_item_data[m].flags & ~D_USER) != (a4_menu_item_data[m].menu_item->flags & ~D_USER))
 	{
-		if(a4_menu_item_data[m].flags & D_DISABLED)
+		if(a4_menu_item_data[m].menu_item->flags & D_DISABLED)
 		{
-			new_flags = ALLEGRO_MENU_ITEM_DISABLED;
+			new_flags |= ALLEGRO_MENU_ITEM_DISABLED;
 		}
-		if(a4_menu_item_data[m].flags & D_SELECTED)
+		if(a4_menu_item_data[m].menu_item->flags & D_SELECTED)
 		{
-			new_flags = ALLEGRO_MENU_ITEM_CHECKED;
+			new_flags |= ALLEGRO_MENU_ITEM_CHECKED;
 		}
-		set_menu_item_flags(native_menu[0], m, new_flags);
+		al_set_menu_item_flags(native_menu[0], m, new_flags);
 		update = true;
 	}
 	if(update)
@@ -320,6 +275,7 @@ void eof_handle_native_menu_clicks(void)
 		if(event.type == ALLEGRO_EVENT_MENU_CLICK)
 		{
 			call_menu_proc(event.user.data1);
+			eof_prepare_menus();
 		}
 	}
 }
