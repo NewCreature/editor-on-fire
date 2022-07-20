@@ -52,22 +52,22 @@ MENU * eof_active_edit_paste_from_menu;
 
 MENU eof_edit_snap_menu[] =
 {
-	{"1/4", eof_menu_edit_snap_quarter, NULL, 0, NULL},
-	{"1/8", eof_menu_edit_snap_eighth, NULL, 0, NULL},
-	{"1/16", eof_menu_edit_snap_sixteenth, NULL, 0, NULL},
-	{"1/32", eof_menu_edit_snap_thirty_second, NULL, 0, NULL},
-	{"1/64", eof_menu_edit_snap_sixty_forth, NULL, 0, NULL},
+	{"1/4", eof_menu_edit_snap_quarter, NULL, D_USER, NULL},
+	{"1/8", eof_menu_edit_snap_eighth, NULL, D_USER, NULL},
+	{"1/16", eof_menu_edit_snap_sixteenth, NULL, D_USER, NULL},
+	{"1/32", eof_menu_edit_snap_thirty_second, NULL, D_USER, NULL},
+	{"1/64", eof_menu_edit_snap_sixty_forth, NULL, D_USER, NULL},
 	{"", NULL, NULL, 0, NULL},
-	{"1/12", eof_menu_edit_snap_twelfth, NULL, 0, NULL},
-	{"1/24", eof_menu_edit_snap_twenty_fourth, NULL, 0, NULL},
-	{"1/48", eof_menu_edit_snap_forty_eighth, NULL, 0, NULL},
-	{"1/96", eof_menu_edit_snap_ninty_sixth, NULL, 0, NULL},
+	{"1/12", eof_menu_edit_snap_twelfth, NULL, D_USER, NULL},
+	{"1/24", eof_menu_edit_snap_twenty_fourth, NULL, D_USER, NULL},
+	{"1/48", eof_menu_edit_snap_forty_eighth, NULL, D_USER, NULL},
+	{"1/96", eof_menu_edit_snap_ninty_sixth, NULL, D_USER, NULL},
 	{"", NULL, NULL, 0, NULL},
-	{"&Custom\tG", eof_menu_edit_snap_custom, NULL, 0, NULL},
+	{"&Custom\tG", eof_menu_edit_snap_custom, NULL, D_USER, NULL},
 	{"", NULL, NULL, 0, NULL},
-	{"&Off", eof_menu_edit_snap_off, NULL, D_SELECTED, NULL},
+	{"&Off", eof_menu_edit_snap_off, NULL, D_SELECTED | D_USER, NULL},
 	{"", NULL, NULL, 0, NULL},
-	{"&Display grid lines\tShift+G", eof_menu_edit_toggle_grid_lines, NULL, 0, NULL},
+	{"&Display grid lines\tShift+G", eof_menu_edit_toggle_grid_lines, NULL, D_USER, NULL},
 	{NULL, NULL, NULL, 0, NULL}
 };
 
